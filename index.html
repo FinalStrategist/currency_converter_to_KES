@@ -134,9 +134,7 @@
                         
                         // Also add USD to KES directly for reference
                         this.kesRates['EUR'] = this.kesToEurRate;
-                        
-                        this.status = `Success! Calculated KES rates for ${Object.keys(this.kesRates).length} currencies`;
-                    } catch (err) {
+                                            } catch (err) {
                         this.error = err.message;
                         this.status = 'Error fetching exchange rates';
                     } finally {
