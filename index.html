@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Intelligence Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #000000, #0c0ca3);
+            min-height: 100vh;
+        }
+        .card {
+            background-color: rgba(black, black, black, .8);
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        .kes-primary {
+            background: linear-gradient(135deg, #006400, #008000) !important;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container py-4">
+
+        <!-- Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <button @click="fetchExchangeRates" :disabled="loading" class="btn btn-primary me-3">
+                            <i class="fas fa-sync-alt me-2" :class="{'fa-spin': loading}"></i>
+                            {{ loading ? 'Loading...' : 'Get KES Exchange Rates' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exchange Rates Display -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="fas fa-money-bill-wave me-2"></i>Current Exchange Rates (KES Base)</h5>
+                        
+                        <!-- Loading State -->
+                        <div v-if="loading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Fetching KES exchange rates...</p>
+                        </div>
+
+                        <!-- Data Display -->
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Currency</th>
+                                            <th>Exchange Rate</th>
+                                            <th>1 KES = </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="(rate, currency) in kesRates" :key="currency">
+                                            <td>
+                                                <strong>{{ currency }}</strong>
+                                            </td>
+                                            <td>{{ rate.toFixed(6) }}</td>
+                                            <td>{{ rate.toFixed(6) }} {{ currency }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        <!-- Empty State -->
+                        <div v-else class="text-center py-4 text-muted">
+                            <i class="fas fa-coins fa-3x mb-3"></i>
+                            <p>Click "Get KES Exchange Rates" to load current currency data</p>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="mt-3 text-end">
+                            <small class="text-muted">Status: {{ status }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <footer class="text-center mt-5 text-light">
+            <p>Built with Vue.js & Axios | Data from <a href="https://www.frankfurter.app/" class="text-light" target="_blank">Frankfurter API</a></p>
+            <p class="small">KES rates calculated using approximate conversion: 1 EUR ≈ 160 KES</p>
+        </footer>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                exchangeRates: null,
+                kesRates: null,
+                // Fixed conversion rate: 1 EUR = 160 KES (approximate current rate)
+                eurToKesRate: 160,
+                kesToEurRate: 1 / 160, // 1 KES = 0.00625 EUR
+                loading: false,
+                error: null,
+                status: 'Ready to fetch KES exchange rates'
+            },
+            methods: {
+                async fetchExchangeRates() {
+                    this.loading = true;
+                    this.error = null;
+                    this.status = 'Fetching EUR rates to calculate KES exchange rates...';
+                    
+                    try {
+                        // Get EUR base rates first
+                        const response = await axios.get('https://api.frankfurter.app/latest');
+                        
+                        // Store the original EUR rates
+                        this.exchangeRates = response.data;
+                        
+                        // Calculate KES base rates using our fixed conversion
+                        // Formula: 1 KES = (1 / eurToKesRate) * foreign_currency_rate
+                        this.kesRates = {};
+                        Object.keys(response.data.rates).forEach(currency => {
+                            // Convert from EUR base to KES base
+                            this.kesRates[currency] = (1 / this.eurToKesRate) * response.data.rates[currency];
+                        });
+                        
+                        // Also add USD to KES directly for reference
+                        this.kesRates['EUR'] = this.kesToEurRate;
+                        
+                        this.status = `Success! Calculated KES rates for ${Object.keys(this.kesRates).length} currencies`;
+                    } catch (err) {
+                        this.error = err.message;
+                        this.status = 'Error fetching exchange rates';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+            },
+            mounted() {
+                // Auto-fetch data when component loads
+                this.fetchExchangeRates();
+            }
+        });
+    </script>
+</body>
+</html>
